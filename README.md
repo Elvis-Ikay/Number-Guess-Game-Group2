@@ -25,9 +25,4 @@ Provides feedback on whether the guess is too low, too high, or correct, and res
 
 ---
 
-## 🚀 Getting Started
-
-1. Clone the repository:
-   ```bash
-   git clone <repository_url>
 
