@@ -2,14 +2,14 @@ pipeline {
     agent any  // Run on any available Jenkins agent
 
     environment {
-    JAVA_HOME = "/usr/lib/jvm/java-11-amazon-corretto"
-    PATH = "${JAVA_HOME}/bin:${env.PATH}"
-}
+        JAVA_HOME = "/usr/lib/jvm/java-11-amazon-corretto"
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+    }
 
     stages {
         stage('Checkout') {
             steps {
-                // Pull the latest code from GitHub
+                echo 'Checking out code from GitHub...'
                 git branch: 'main', url: 'https://github.com/Elvis-Ikay/Number-Guess-Game-Group2.git'
             }
         }
@@ -50,3 +50,5 @@ pipeline {
         failure {
             echo 'Build failed. Check the console output.'
         }
+    }
+}
