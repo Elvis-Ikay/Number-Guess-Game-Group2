@@ -2,7 +2,7 @@ pipeline {
     agent any  // Run on any available Jenkins agent
 
     environment {
-    JAVA_HOME = "/usr/lib/jvm/java-17-amazon-corretto"
+    JAVA_HOME = "/usr/lib/jvm/java-11-amazon-corretto"
     PATH = "${JAVA_HOME}/bin:${env.PATH}"
 }
 
