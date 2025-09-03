@@ -1,59 +1,49 @@
 pipeline {
-    agent any
-
-    // Use Jenkins-installed tools matching your configuration
-    tools {
-        jdk   'JDK11'       // Matches your configured name
-        maven 'Maven'       // Matches your configured name
-    }
-
-    options {
-        timestamps()
-        ansiColor('xterm')
-    }
+    agent any  // Run on any available Jenkins agent
 
     stages {
-        stage('Verify Tools') {
-            steps {
-                sh 'java -version'
-                sh 'mvn --version'
-                sh 'ls -la'
-            }
-        }
-
         stage('Checkout') {
             steps {
-                echo 'Checking out code...'
-                checkout scm
+                echo 'Checking out code from GitHub...'
+                git branch: 'main', url: 'https://github.com/Elvis-Ikay/Number-Guess-Game-Group2.git'
             }
         }
 
         stage('Clean') {
             steps {
                 echo 'Cleaning previous builds...'
-                sh 'mvn -B clean'
+                sh 'mvn clean'
             }
         }
 
-        stage('Build & Test') {
+        stage('Build & Package') {
             steps {
-                echo 'Building and running tests...'
-                sh 'mvn -B -U verify'
+                echo 'Building project...'
+                sh 'mvn package'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo 'Running tests...'
+                sh 'mvn test'
             }
         }
 
         stage('Archive Artifact') {
             steps {
-                echo 'Archiving build artifacts & test reports...'
-                junit 'target/surefire-reports/*.xml'
+                echo 'Archiving build artifacts...'
                 archiveArtifacts artifacts: 'target/*.war', fingerprint: true
             }
         }
     }
 
     post {
-        success { echo 'Build and tests completed successfully!' }
-        failure { echo 'Build failed. Check Console Output and Test Result.' }
+        success {
+            echo 'Build and tests completed successfully!'
+        }
+        failure {
+            echo 'Build failed. Check the console output.'
+        }
     }
 }
-
