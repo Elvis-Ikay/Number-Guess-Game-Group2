@@ -1,10 +1,10 @@
 pipeline {
     agent any
 
-    // Use Jenkins-installed tools so mvn/java are available
+    // Use Jenkins-installed tools matching your configuration
     tools {
-        jdk   'jdk11'       // Configure in Manage Jenkins → Tools
-        maven 'maven39'     // Configure in Manage Jenkins → Tools
+        jdk   'JDK11'       // Matches your configured name
+        maven 'Maven'       // Matches your configured name
     }
 
     options {
@@ -13,10 +13,17 @@ pipeline {
     }
 
     stages {
+        stage('Verify Tools') {
+            steps {
+                sh 'java -version'
+                sh 'mvn --version'
+                sh 'ls -la'
+            }
+        }
+
         stage('Checkout') {
             steps {
                 echo 'Checking out code...'
-                // In Multibranch Pipeline this checks out the correct branch (not hard-coded main)
                 checkout scm
             }
         }
@@ -31,7 +38,6 @@ pipeline {
         stage('Build & Test') {
             steps {
                 echo 'Building and running tests...'
-                // verify = compile + test + package (fails build if tests fail)
                 sh 'mvn -B -U verify'
             }
         }
@@ -39,10 +45,8 @@ pipeline {
         stage('Archive Artifact') {
             steps {
                 echo 'Archiving build artifacts & test reports...'
-                // publish JUnit results so Jenkins shows a Test report
                 junit 'target/surefire-reports/*.xml'
-                // archive either WAR or JAR (whichever your pom builds)
-                archiveArtifacts artifacts: 'target/*.war, target/*.jar', fingerprint: true
+                archiveArtifacts artifacts: 'target/*.war', fingerprint: true
             }
         }
     }
