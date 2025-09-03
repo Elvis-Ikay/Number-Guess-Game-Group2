@@ -1,23 +1,54 @@
 pipeline {
-  agent any
-  tools {
-    jdk 'jdk11'
-    maven 'maven39'
-  }
-  stages {
-    stage('Checkout'){ steps { checkout scm } }
-    stage('Verify tools'){ steps { sh 'java -version && mvn -version' } }
-    stage('Clean'){ steps { sh 'mvn -B clean' } }
-    stage('Build & Test'){ steps { sh 'mvn -B verify' } } // runs tests too
-    stage('Archive'){
-      steps {
-        archiveArtifacts artifacts: 'target/*.war, target/*.jar', fingerprint: true
-        junit 'target/surefire-reports/*.xml'
-      }
+    agent any  // Run on any available Jenkins agent
+
+    environment {
+        JAVA_HOME = "/usr/lib/jvm/java-11-amazon-corretto"
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
     }
-  }
-  post {
-    success { echo 'Build & tests OK' }
-    failure { echo 'Build failed - check Console Output & Test Result' }
-  }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out code from GitHub...'
+                git branch: 'main', url: 'https://github.com/Elvis-Ikay/Number-Guess-Game-Group2.git'
+            }
+        }
+
+        stage('Clean') {
+            steps {
+                echo 'Cleaning previous builds...'
+                sh 'mvn clean'
+            }
+        }
+
+        stage('Build & Package') {
+            steps {
+                echo 'Building project...'
+                sh 'mvn package'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo 'Running tests...'
+                sh 'mvn test'
+            }
+        }
+
+        stage('Archive Artifact') {
+            steps {
+                echo 'Archiving build artifacts...'
+                archiveArtifacts artifacts: 'target/*.war', fingerprint: true
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Build and tests completed successfully!'
+        }
+        failure {
+            echo 'Build failed. Check the console output.'
+        }
+    }
 }
