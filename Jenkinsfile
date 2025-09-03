@@ -1,54 +1,35 @@
 pipeline {
-    agent any  // Run on any available Jenkins agent
-
-    environment {
-        JAVA_HOME = "/usr/lib/jvm/java-11-amazon-corretto"
-        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+  agent {
+    docker {
+      image 'maven:3.9.6-eclipse-temurin-11'   // Maven + Java 11
+      args  '-v $HOME/.m2:/root/.m2'          // cache dependencies (optional)
     }
+  }
 
-    stages {
-        stage('Checkout') {
-            steps {
-                echo 'Checking out code from GitHub...'
-                git branch: 'main', url: 'https://github.com/Elvis-Ikay/Number-Guess-Game-Group2.git'
-            }
-        }
-
-        stage('Clean') {
-            steps {
-                echo 'Cleaning previous builds...'
-                sh 'mvn clean'
-            }
-        }
-
-        stage('Build & Package') {
-            steps {
-                echo 'Building project...'
-                sh 'mvn package'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                echo 'Running tests...'
-                sh 'mvn test'
-            }
-        }
-
-        stage('Archive Artifact') {
-            steps {
-                echo 'Archiving build artifacts...'
-                archiveArtifacts artifacts: 'target/*.war', fingerprint: true
-            }
-        }
+  stages {
+    stage('Checkout') {
+      steps { checkout scm }
     }
-
-    post {
-        success {
-            echo 'Build and tests completed successfully!'
-        }
-        failure {
-            echo 'Build failed. Check the console output.'
-        }
+    stage('Verify tools') {
+      steps { sh 'java -version && mvn -version' }
     }
+    stage('Clean') {
+      steps { sh 'mvn clean' }
+    }
+    stage('Build & Package') {
+      steps { sh 'mvn package' }
+    }
+    stage('Test') {
+      steps { sh 'mvn test' }
+    }
+    stage('Archive Artifact') {
+      steps { archiveArtifacts artifacts: 'target/*.war', fingerprint: true }
+    }
+  }
+
+  post {
+    success { echo 'Build and tests completed successfully!' }
+    failure { echo 'Build failed. Check the console output.' }
+  }
 }
+
