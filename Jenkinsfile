@@ -16,7 +16,7 @@ pipeline {
         stage('git-checkout') {
             steps {
                 script {
-                    git branch: 'main', url: 'https://github.com/Elvis-Ikay/Number-Guess-Game-Group2'
+                    git branch: 'develop', url: 'https://github.com/Elvis-Ikay/Number-Guess-Game-Group2'
                 }
             }
         }
