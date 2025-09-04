@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     triggers {
-        // Trigger build when GitHub webhook fires
+        // Trigger when GitHub webhook fires
         githubPush()   // if using GitHub
     }
 
