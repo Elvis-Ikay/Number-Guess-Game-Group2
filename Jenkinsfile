@@ -60,24 +60,6 @@ pipeline {
             }
         }
 
-        stage('Info') {
-            steps {
-                script {
-                    def commitInfo = sh(
-                        script: 'git log -1 --pretty="%h - %s (%an)"',
-                        returnStdout: true
-                    ).trim()
-
-                    echo ">>> Building and Deploying Branch: master"
-                    echo ">>> Commit: ${env.GIT_COMMIT}"
-                    echo ">>> Latest Commit: ${commitInfo}"
-
-                    currentBuild.displayName = "#${BUILD_NUMBER} - master"
-                    currentBuild.description = commitInfo
-                }
-            }
-        }
-
         stage('code-analysis') {
             steps {
                 withSonarQubeEnv('sonar') {
@@ -90,28 +72,6 @@ pipeline {
                                 -Dsonar.java.binaries=target/classes
                         """
                         echo "✅ Code analysis completed"
-                    }
-                }
-            }
-        }
-
-        stage('Quality Gate') {
-            steps {
-                script {
-                    try {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            def qg = waitForQualityGate()
-                            if (qg.status != 'OK') {
-                                echo "⚠️ Quality Gate status: ${qg.status}"
-                                // Don't fail the build, just mark as unstable
-                                currentBuild.result = 'UNSTABLE'
-                            } else {
-                                echo "✅ Quality Gate passed!"
-                            }
-                        }
-                    } catch (Exception e) {
-                        echo "⚠️ Quality Gate check failed: ${e.message}"
-                        currentBuild.result = 'UNSTABLE'
                     }
                 }
             }
@@ -144,33 +104,6 @@ pipeline {
             }
         }
 
-        stage('Deployment Approval') {
-            steps {
-                script {
-                    def commitInfo = sh(
-                        script: 'git log -1 --pretty="%h - %s (%an)"',
-                        returnStdout: true
-                    ).trim()
-
-                    timeout(time: 15, unit: 'MINUTES') {
-                        input message: """
-                            🚀 Ready to deploy to Tomcat?
-
-                            Build: #${BUILD_NUMBER}
-                            Commit: ${commitInfo}
-                            Artifact: NumberGuessGame-${BUILD_NUMBER}-SNAPSHOT.war
-
-                            Proceed with deployment?
-                        """,
-                              ok: 'Deploy Now',
-                              submitterParameter: 'APPROVER'
-                    }
-
-                    echo "✅ Deployment approved by: ${env.APPROVER}"
-                }
-            }
-        }
-
         stage('deploy-to-tomcat') {
             steps {
                 script {
@@ -192,9 +125,6 @@ pipeline {
             steps {
                 script {
                     echo "🔍 Verifying deployment..."
-
-                    // Wait for deployment to complete
-                    sleep(30)
 
                     try {
                         def appUrl = "http://54.197.207.89:8080/NumberGuessGame-${BUILD_NUMBER}-SNAPSHOT/"
