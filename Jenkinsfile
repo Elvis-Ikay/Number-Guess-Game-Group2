@@ -30,12 +30,13 @@ pipeline {
         }
         stage('Info') {
             steps {
-                echo ">>> Building and Deploying Branch: ${env.GIT_BRANCH ?: env.BRANCH_NAME}"
-                echo ">>> Commit: ${env.GIT_COMMIT}"
-                currentBuild.displayName = "#${BUILD_NUMBER} - ${env.GIT_BRANCH ?: env.BRANCH_NAME}"
+                script {
+                    echo ">>> Building and Deploying Branch: ${env.GIT_BRANCH ?: env.BRANCH_NAME}"
+                    echo ">>> Commit: ${env.GIT_COMMIT}"
+                    currentBuild.displayName = "#${BUILD_NUMBER} - ${env.GIT_BRANCH ?: env.BRANCH_NAME}"
+                }
             }
         }
-
         stage('code-analysis') {
             steps {
                 withSonarQubeEnv('sonar') {
