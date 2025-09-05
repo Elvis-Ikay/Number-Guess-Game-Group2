@@ -36,7 +36,7 @@ pipeline {
                             ${SCANNER_HOME}/bin/sonar-scanner \
                                 -Dsonar.projectKey=webapp \
                                 -Dsonar.projectName=webapp\
-                                -Dsonar.host.url=http://54.242.229.73:9000\
+                                -Dsonar.host.url=http://54.82.13.156:9000\
                                 -Dsonar.java.binaries=target/classes
                         """
                     }
@@ -58,7 +58,7 @@ pipeline {
                         ]],
                         credentialsId: 'nexus-creds',
                         groupId: 'webapp',
-                        nexusUrl: '54.205.2.82:8081/',
+                        nexusUrl: '52.91.130.98:8081/',
                         nexusVersion: 'nexus3',
                         protocol: 'http',
                         repository: 'number-guessing-game-artifacts',
@@ -74,7 +74,7 @@ pipeline {
                         alternativeDeploymentContext: '',
                         credentialsId: 'nexusandtomcat',
                         path: '',
-                        url: 'http://52.91.10.193:8080/manager/text'
+                        url: 'http://98.86.241.223:8080/manager/text'
                     )], war: '**/*.war'
                 }
             }
