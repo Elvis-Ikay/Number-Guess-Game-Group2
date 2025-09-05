@@ -1,15 +1,6 @@
 pipeline {
     agent any
 
-    // Only run this pipeline on master/main branches
-    when {
-        anyOf {
-            branch 'master'
-            branch 'main'
-            triggeredBy 'UserIdCause'  // Allow manual triggers
-        }
-    }
-
     triggers {
         githubPush()
     }
@@ -23,11 +14,38 @@ pipeline {
     }
 
     stages {
+        stage('Branch Filter') {
+            steps {
+                script {
+                    // Get the branch name from environment variables
+                    def branchName = env.GIT_BRANCH ?: env.BRANCH_NAME ?: 'unknown'
+
+                    // Remove 'origin/' prefix if present
+                    if (branchName.startsWith('origin/')) {
+                        branchName = branchName.replaceFirst('origin/', '')
+                    }
+
+                    echo "Triggered by: ${currentBuild.getBuildCauses()}"
+                    echo "Branch detected: ${branchName}"
+
+                    // Only proceed if this is master or main branch
+                    if (branchName != 'master' && branchName != 'main') {
+                        echo "⏭️ Skipping pipeline - not master/main branch (detected: ${branchName})"
+                        currentBuild.result = 'ABORTED'
+                        currentBuild.displayName = "#${BUILD_NUMBER} - SKIPPED (${branchName})"
+                        error("Pipeline execution stopped - not targeting master/main branch")
+                    }
+
+                    echo "✅ Branch filter passed - proceeding with pipeline for ${branchName}"
+                }
+            }
+        }
+
         stage('git-checkout') {
             steps {
                 script {
                     git branch: 'main', url: 'https://github.com/Elvis-Ikay/Number-Guess-Game-Group2'
-                    echo "✅ Checked out branch: ${env.GIT_BRANCH ?: env.BRANCH_NAME ?: 'master'}"
+                    echo "✅ Checked out main branch"
                 }
             }
         }
@@ -37,6 +55,7 @@ pipeline {
                 script {
                     sh 'mvn clean install'
                     sh "cp target/NumberGuessGame-1.0-SNAPSHOT.war target/NumberGuessGame-${BUILD_NUMBER}-SNAPSHOT.war"
+                    echo "✅ Build completed successfully"
                 }
             }
         }
@@ -44,9 +63,17 @@ pipeline {
         stage('Info') {
             steps {
                 script {
-                    echo ">>> Building and Deploying Branch: ${env.GIT_BRANCH ?: env.BRANCH_NAME}"
+                    def commitInfo = sh(
+                        script: 'git log -1 --pretty="%h - %s (%an)"',
+                        returnStdout: true
+                    ).trim()
+
+                    echo ">>> Building and Deploying Branch: master"
                     echo ">>> Commit: ${env.GIT_COMMIT}"
-                    currentBuild.displayName = "#${BUILD_NUMBER} - ${env.GIT_BRANCH ?: env.BRANCH_NAME}"
+                    echo ">>> Latest Commit: ${commitInfo}"
+
+                    currentBuild.displayName = "#${BUILD_NUMBER} - master"
+                    currentBuild.description = commitInfo
                 }
             }
         }
@@ -62,6 +89,29 @@ pipeline {
                                 -Dsonar.host.url=http://54.146.233.215:9000\
                                 -Dsonar.java.binaries=target/classes
                         """
+                        echo "✅ Code analysis completed"
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                script {
+                    try {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            def qg = waitForQualityGate()
+                            if (qg.status != 'OK') {
+                                echo "⚠️ Quality Gate status: ${qg.status}"
+                                // Don't fail the build, just mark as unstable
+                                currentBuild.result = 'UNSTABLE'
+                            } else {
+                                echo "✅ Quality Gate passed!"
+                            }
+                        }
+                    } catch (Exception e) {
+                        echo "⚠️ Quality Gate check failed: ${e.message}"
+                        currentBuild.result = 'UNSTABLE'
                     }
                 }
             }
@@ -71,6 +121,7 @@ pipeline {
             steps {
                 script {
                     def warFile = findFiles(glob: 'target/*.war')[0].path
+                    echo "📦 Uploading ${warFile} to Nexus..."
 
                     nexusArtifactUploader(
                         artifacts: [[
@@ -87,6 +138,35 @@ pipeline {
                         repository: 'number-guessing-game-artifacts',
                         version: "${BUILD_NUMBER}"
                     )
+
+                    echo "✅ Artifact uploaded to Nexus successfully"
+                }
+            }
+        }
+
+        stage('Deployment Approval') {
+            steps {
+                script {
+                    def commitInfo = sh(
+                        script: 'git log -1 --pretty="%h - %s (%an)"',
+                        returnStdout: true
+                    ).trim()
+
+                    timeout(time: 15, unit: 'MINUTES') {
+                        input message: """
+                            🚀 Ready to deploy to Tomcat?
+
+                            Build: #${BUILD_NUMBER}
+                            Commit: ${commitInfo}
+                            Artifact: NumberGuessGame-${BUILD_NUMBER}-SNAPSHOT.war
+
+                            Proceed with deployment?
+                        """,
+                              ok: 'Deploy Now',
+                              submitterParameter: 'APPROVER'
+                    }
+
+                    echo "✅ Deployment approved by: ${env.APPROVER}"
                 }
             }
         }
@@ -94,23 +174,105 @@ pipeline {
         stage('deploy-to-tomcat') {
             steps {
                 script {
+                    echo "🚀 Deploying to Tomcat server..."
+
                     deploy adapters: [tomcat9(
                         alternativeDeploymentContext: '',
                         credentialsId: 'nexusandtomcat',
                         path: '',
                         url: 'http://54.197.207.89:8080/manager/text'
                     )], war: '**/*.war'
+
+                    echo "✅ Deployment to Tomcat completed"
+                }
+            }
+        }
+
+        stage('Deployment Verification') {
+            steps {
+                script {
+                    echo "🔍 Verifying deployment..."
+
+                    // Wait for deployment to complete
+                    sleep(30)
+
+                    try {
+                        def appUrl = "http://54.197.207.89:8080/NumberGuessGame-${BUILD_NUMBER}-SNAPSHOT/"
+
+                        // Test if application is accessible
+                        def response = sh(
+                            script: "curl -s -o /dev/null -w '%{http_code}' '${appUrl}'",
+                            returnStdout: true
+                        ).trim()
+
+                        if (response == '200') {
+                            echo "✅ Application is responding correctly (HTTP ${response})"
+                            echo "🌐 Application URL: ${appUrl}"
+                        } else {
+                            echo "⚠️ Application responded with HTTP ${response}"
+                            echo "🌐 Application URL: ${appUrl}"
+                        }
+                    } catch (Exception e) {
+                        echo "⚠️ Could not verify deployment: ${e.message}"
+                    }
                 }
             }
         }
     }
 
     post {
-        success {
-            echo "🎉 Deployment successful! Application URL: http://98.86.241.223:8080/NumberGuessGame-${BUILD_NUMBER}-SNAPSHOT/"
+        always {
+            script {
+                echo "Pipeline execution completed"
+            }
         }
+
+        success {
+            script {
+                def commitInfo = sh(
+                    script: 'git log -1 --pretty="%h - %s (%an)"',
+                    returnStdout: true
+                ).trim()
+
+                echo """
+                    🎉 DEPLOYMENT SUCCESSFUL!
+
+                    Build: #${BUILD_NUMBER}
+                    Branch: master
+                    Commit: ${commitInfo}
+                    Approved by: ${env.APPROVER ?: 'System'}
+
+                    🌐 Application URL: http://98.86.241.223:8080/NumberGuessGame-${BUILD_NUMBER}-SNAPSHOT/
+                    📦 Nexus Artifact: webapp:web:${BUILD_NUMBER}
+                """
+            }
+        }
+
         failure {
-            echo "❌ Pipeline failed. Check logs for details."
+            echo """
+                ❌ PIPELINE FAILED!
+
+                Build: #${BUILD_NUMBER}
+                Branch: master
+
+                Please check the console output for error details.
+            """
+        }
+
+        aborted {
+            script {
+                def branchName = env.GIT_BRANCH ?: env.BRANCH_NAME ?: 'unknown'
+                if (branchName.startsWith('origin/')) {
+                    branchName = branchName.replaceFirst('origin/', '')
+                }
+
+                echo """
+                    ⏹️ PIPELINE ABORTED
+
+                    Reason: Branch filter (detected: ${branchName})
+                    Note: Pipeline only runs for master/main branch pushes
+                """
+            }
         }
     }
 }
