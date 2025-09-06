@@ -67,8 +67,8 @@ pipeline {
                         sh """
                             ${SCANNER_HOME}/bin/sonar-scanner \
                                 -Dsonar.projectKey=webapp \
-                                -Dsonar.projectName=webapp\
-                                -Dsonar.host.url=http://184.73.129.250:9000\
+                                -Dsonar.projectName=guessing-game\
+                                -Dsonar.host.url=http://100.24.36.13:9000\
                                 -Dsonar.java.binaries=target/classes
                         """
                         echo "✅ Code analysis completed"
@@ -92,7 +92,7 @@ pipeline {
                         ]],
                         credentialsId: 'nexus-creds',
                         groupId: 'webapp',
-                        nexusUrl: '54.221.165.105:8081/',
+                        nexusUrl: '174.129.125.250:8081/',
                         nexusVersion: 'nexus3',
                         protocol: 'http',
                         repository: 'number-guessing-game-artifacts',
@@ -113,7 +113,7 @@ pipeline {
                         alternativeDeploymentContext: '',
                         credentialsId: 'nexusandtomcat',
                         path: '',
-                        url: 'http://54.198.207.190:8080/manager/text'
+                        url: 'http://3.81.205.214:8080/manager/text'
                     )], war: '**/*.war'
 
                     echo "✅ Deployment to Tomcat completed"
@@ -127,7 +127,7 @@ pipeline {
                     echo "🔍 Verifying deployment..."
 
                     try {
-                        def appUrl = "http://54.198.207.190:8080/NumberGuessGame-${BUILD_NUMBER}-SNAPSHOT/"
+                        def appUrl = "http://3.81.205.214:8080/NumberGuessGame-${BUILD_NUMBER}-SNAPSHOT/"
 
                         // Test if application is accessible
                         def response = sh(
@@ -172,7 +172,7 @@ pipeline {
                     Commit: ${commitInfo}
                     Approved by: ${env.APPROVER ?: 'System'}
 
-                    🌐 Application URL: http://54.198.207.190:8080/NumberGuessGame-${BUILD_NUMBER}-SNAPSHOT/
+                    🌐 Application URL: http://3.81.205.214:8080/NumberGuessGame-${BUILD_NUMBER}-SNAPSHOT/
                     📦 Nexus Artifact: webapp:web:${BUILD_NUMBER}
                 """
             }
