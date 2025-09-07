@@ -23,7 +23,7 @@ Provides feedback on whether the guess is too low, too high, or correct, and res
 - **Mockito 5.12.0** (mocking HTTP requests/responses)
 - **Maven** (build and dependency management)
 
---- Thanks
+--- Thank
 
 
 
